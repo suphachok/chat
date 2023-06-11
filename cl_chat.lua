@@ -225,8 +225,8 @@ local CHAT_HIDE_STATES = {
 }
 
 local kvpEntry = GetResourceKvpString('hideState')
-local chatHideState = CHAT_HIDE_STATES.SHOW_WHEN_ACTIVE
-local isFirstHide = false
+local chatHideState = CHAT_HIDE_STATES.SHOW_WHEN_ACTIVE -- Fix
+local isFirstHide = false --Fix
 
 if not isRDR then
   if RegisterKeyMapping then
