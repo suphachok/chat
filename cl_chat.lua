@@ -1,5 +1,5 @@
 local isRDR = not TerraingridActivate and true or false
-
+-- FIx
 local chatInputActive = false
 local chatInputActivating = false
 local chatLoaded = false
@@ -225,8 +225,8 @@ local CHAT_HIDE_STATES = {
 }
 
 local kvpEntry = GetResourceKvpString('hideState')
-local chatHideState = CHAT_HIDE_STATES.SHOW_WHEN_ACTIVE -- Fix
-local isFirstHide = false --Fix
+local chatHideState = CHAT_HIDE_STATES.SHOW_WHEN_ACTIVE -- Fix 222
+local isFirstHide = false --Fix 222
 
 if not isRDR then
   if RegisterKeyMapping then
