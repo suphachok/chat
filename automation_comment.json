@@ -1,0 +1,204 @@
+{
+  "name": "Multi-Platform AI Comment Auto-Reply (FB, IG, YT, TT)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "amount": 15,
+              "unit": "minutes"
+            }
+          ]
+        }
+      },
+      "name": "Cron Trigger (Every 15 Minutes)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "id": "e44d34f0-3e7e-40d0-b49f-431835b0e513"
+    },
+    {
+      "parameters": {},
+      "name": "Branch: Facebook & Instagram",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "id": "c1f6d337-b6f7-4340-96f3-1813e3146e49"
+    },
+    {
+      "parameters": {},
+      "name": "Branch: YouTube",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "id": "5512d93e-0c0e-436f-b27b-e988296a2444"
+    },
+    {
+      "parameters": {},
+      "name": "Branch: TikTok (Requires 3rd Party API)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "id": "27329737-1845-42a9-b6be-e48356f91605"
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v19.0/{{$env.FACEBOOK_PAGE_ID}}/posts?fields=comments&limit=25",
+        "method": "GET",
+        "headerParameters": [
+          {
+            "name": "Authorization",
+            "value": "Bearer {{$env.META_ACCESS_TOKEN}}"
+          }
+        ],
+        "sendOnlySetParameters": true,
+        "options": {}
+      },
+      "name": "HTTP: Get FB/IG Comments",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "id": "76d1a6e9-b461-4873-982c-471253e7f674"
+    },
+    {
+      "parameters": {
+        "resource": "comment",
+        "operation": "getForVideo",
+        "videoId": "={{$env.YOUTUBE_VIDEO_ID}}",
+        "options": {}
+      },
+      "name": "YouTube: Get Comments",
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 2,
+      "id": "f51684c3-10e9-4e09-8d76-e137688220f8",
+      "credentials": {
+        "youTubeApi": {
+          "id": "PLACEHOLDER_YOUTUBE_CREDENTIAL_ID",
+          "name": "YouTube Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "json",
+        "value": {
+          "comment_text": "={{$json.comment_text}}",
+          "username": "={{$json.username}}",
+          "platform": "Facebook"
+        }
+      },
+      "name": "Prepare Data for AI",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "id": "d04a622c-a2b1-460d-85fa-7f89283f6f1c"
+    },
+    {
+      "parameters": {
+        "model": "gemini-2.5-flash",
+        "chatType": "prompt",
+        "prompt": "You are a friendly social media manager for a brand. Your tone is helpful and engaging. The user's comment is \"{{$json.comment_text}}\". The post is about [Insert Post Topic Here]. Reply to the comment. If the comment is spam or purely promotional, output ONLY the text: [IGNORE]",
+        "options": {}
+      },
+      "name": "AI: Generate Reply with Gemini",
+      "type": "n8n-nodes-base.googleGemini",
+      "typeVersion": 1,
+      "id": "e6f9876e-561b-466d-886f-2e3d74c6d328",
+      "credentials": {
+        "googleApi": {
+          "id": "PLACEHOLDER_GEMINI_CREDENTIAL_ID",
+          "name": "Google Gemini Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.output}}",
+              "value2": "[IGNORE]",
+              "operation": "notEqual"
+            }
+          ]
+        },
+        "combineOperation": "all"
+      },
+      "name": "Filter: Ignore Spam/Irrelevant",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "id": "1c5305f8-b18c-482a-a924-f7b578c2e269"
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v19.0/{{$json.comment_id}}/replies",
+        "method": "POST",
+        "headerParameters": [
+          {
+            "name": "Authorization",
+            "value": "Bearer {{$env.META_ACCESS_TOKEN}}"
+          }
+        ],
+        "bodyParameters": {
+          "message": "={{$json.output}}"
+        },
+        "sendOnlySetParameters": true,
+        "options": {}
+      },
+      "name": "HTTP: Post FB/IG Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "id": "f51684c3-10e9-4e09-8d76-e137688220f1"
+    }
+  ],
+  "connections": {
+    "e44d34f0-3e7e-40d0-b49f-431835b0e513": [
+      {
+        "node": "Branch: Facebook & Instagram",
+        "index": 0
+      },
+      {
+        "node": "Branch: YouTube",
+        "index": 0
+      },
+      {
+        "node": "Branch: TikTok (Requires 3rd Party API)",
+        "index": 0
+      }
+    ],
+    "c1f6d337-b6f7-4340-96f3-1813e3146e49": [
+      {
+        "node": "HTTP: Get FB/IG Comments",
+        "index": 0
+      }
+    ],
+    "5512d93e-0c0e-436f-b27b-e988296a2444": [
+      {
+        "node": "YouTube: Get Comments",
+        "index": 0
+      }
+    ],
+    "76d1a6e9-b461-4873-982c-471253e7f674": [
+      {
+        "node": "Prepare Data for AI",
+        "index": 0
+      }
+    ],
+    "d04a622c-a2b1-460d-85fa-7f89283f6f1c": [
+      {
+        "node": "AI: Generate Reply with Gemini",
+        "index": 0
+      }
+    ],
+    "e6f9876e-561b-466d-886f-2e3d74c6d328": [
+      {
+        "node": "Filter: Ignore Spam/Irrelevant",
+        "index": 0
+      }
+    ],
+    "1c5305f8-b18c-482a-a924-f7b578c2e269": [
+      {
+        "node": "HTTP: Post FB/IG Reply",
+        "index": 0
+      }
+    ]
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "b18b6e68-07e1-450f-a90f-38d7857053e1"
+}
