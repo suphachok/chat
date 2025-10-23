@@ -1,0 +1,277 @@
+{
+  "name": "Plant Properties Generator with Loop",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "value": "your_input_sheet_id_here"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "list"
+        },
+        "range": "A:A",
+        "options": {
+          "headerRow": false,
+          "valueRenderOption": "UNFORMATTED_VALUE",
+          "dateTimeRenderOption": "SERIAL_NUMBER"
+        }
+      },
+      "id": "2",
+      "name": "Read Plants",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.3,
+      "position": [
+        460,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "3",
+      "name": "Split In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "plantName",
+              "value": "={{ $json.A }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4",
+      "name": "Set Plant Name",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "operation": "create",
+        "model": "gpt-3.5-turbo",
+        "messages": {
+          "values": [
+            {
+              "role": "user",
+              "content": "=คุณเป็นผู้เชี่ยวชาญด้านสมุนไพรไทยและการแพทย์แผนไทย. สำหรับพืชชื่อ '{{ $json.plantName }}' โปรดสร้างรายการสรรพคุณทางการแพทย์ทั้งหมดที่รู้จัก โดยอ้างอิงจากตำรายแพทย์แผนไทย การแพทย์สมัยใหม่ และความรู้ทางวิทยาศาสตร์ที่ยืนยันได้. สรรพคุณแต่ละข้อต้องเป็นชื่อโรค อาการ หรือภาวะสุขภาพที่พืชนี้ช่วยบรรเทา รักษา หรือป้องกันได้ โดยระบุเฉพาะชื่อสรรพคุณในภาษาไทยเท่านั้น (เช่น 'โรคถ่ายยาก' หรือ 'อาการท้องเสีย'). อย่าระบุส่วนของพืช วิธีการใช้ หรือรายละเอียดเพิ่มเติม. สร้างรายการให้ครอบคลุมมากที่สุด (อย่างน้อย 5-10 ข้อ หากมี) และแต่ละสรรพคุณหนึ่งบรรทัดต่อหนึ่ง. หากพืชนั้นไม่มีสรรพคุณที่รู้จัก ให้ระบุ 'ไม่มีสรรพคุณที่ยืนยันทางวิทยาศาสตร์'. ตัวอย่างสำหรับมะขาม:\nโรคถ่ายยาก\nโรคนอนไม่หลับ\nท้องเสีย\nอาการไอ\nแผลในปาก"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5",
+      "name": "Generate Properties",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        300
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "1",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const plant = $node[\"Set Plant Name\"].json.plantName;\nconst aiResponse = $input.item.json.choices[0].message.content;\nconst properties = aiResponse.split('\\n').map(p => p.trim()).filter(p => p.length > 0 && p !== 'ไม่มีสรรพคุณที่ยืนยันทางวิทยาศาสตร์');\nreturn properties.map(prop => ({\n  json: {\n    plant: plant,\n    property: prop\n  }\n}));"
+      },
+      "id": "6",
+      "name": "Split Properties",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "value": "your_output_sheet_id_here"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "plant": "={{ $json.plant }}",
+            "property": "={{ $json.property }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "7",
+      "name": "Append to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.3,
+      "position": [
+        1560,
+        300
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "waitAmount",
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "id": "8",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read Plants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Plants": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches": {
+      "main": [
+        [
+          {
+            "node": "Set Plant Name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Plant Name": {
+      "main": [
+        [
+          {
+            "node": "Generate Properties",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Properties": {
+      "main": [
+        [
+          {
+            "node": "Split Properties",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Properties": {
+      "main": [
+        [
+          {
+            "node": "Append to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append to Sheet": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-10-24T00:00:00.000Z",
+  "versionId": 1
+}
